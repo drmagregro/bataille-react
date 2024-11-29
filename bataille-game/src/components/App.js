@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
-import Card from './Card';  
+import Battle from './Battle';  
 
 const cardValueTranslation = {
   '2': 'Deux', '3': 'Trois', '4': 'Quatre', '5': 'Cinq', '6': 'Six', '7': 'Sept',
@@ -23,8 +23,6 @@ const App = () => {
   const [playerDeck, setPlayerDeck] = useState([]);
   const [computerDeck, setComputerDeck] = useState([]);
   const [message, setMessage] = useState('');
-  const [playerCard, setPlayerCard] = useState(null); 
-  const [computerCard, setComputerCard] = useState(null); 
 
   useEffect(() => {
     const createDeck = async () => {
@@ -33,11 +31,10 @@ const App = () => {
         const deckId = response.data.deck_id;  
         setDeckId(deckId);
 
-       
+        
         const drawCards = await axios.get(`https://deckofcardsapi.com/api/deck/${deckId}/draw/?count=52`);
         const allCards = drawCards.data.cards;
 
-       
         const playerCards = allCards.slice(0, 26);
         const computerCards = allCards.slice(26);
 
@@ -71,10 +68,6 @@ const App = () => {
     const playerCardValue = getCardValue(playerCurrentCard);
     const computerCardValue = getCardValue(computerCurrentCard);
 
-    setPlayerCard(playerCurrentCard);
-    setComputerCard(computerCurrentCard);
-
-    
     if (playerCardValue > computerCardValue) {
       setPlayerDeck([...playerDeck.slice(1), playerCurrentCard, computerCurrentCard]); 
       setComputerDeck(computerDeck.slice(1)); 
@@ -86,7 +79,7 @@ const App = () => {
     } else {
       setPlayerDeck(playerDeck.slice(1)); 
       setComputerDeck(computerDeck.slice(1));
-      setMessage(`Égalité : ${getCardNameInFrench(playerCurrentCard)} contre ${getCardNameInFrench(computerCurrentCard)}`);
+      setMessage(`Égalité : ${getCardNameInFrench(playerCurrentCard)} contre ${getCardNameInFrench(computerCurrentCard)} les cartes sont brulées !`);
     }
   };
 
@@ -94,17 +87,18 @@ const App = () => {
     <div className="app-container">
       <h1>Bataille</h1>
       <button onClick={playTurn} disabled={playerDeck.length === 0 || computerDeck.length === 0}>
-        Tirer une
+        Tirer une carte
       </button>
       <p>{message}</p>
       <h3>Cartes restantes :</h3>
       <p>Joueur : {playerDeck.length}</p>
       <p>Ordinateur : {computerDeck.length}</p>
 
-      <div className="card-section">
-        {playerCard && <Card card={playerCard} />}
-        {computerCard && <Card card={computerCard} />}
-      </div>
+      <Battle 
+        playerDeck={playerDeck} 
+        computerDeck={computerDeck} 
+        message={message}
+      />
     </div>
   );
 };
