@@ -64,3 +64,14 @@ p {
   font-weight: bold;
   font-size: 1.1rem;
 }
+
+.card-container {
+  display: inline-block;
+  margin: 10px;
+  text-align: center;
+}
+
+.card-container img {
+  width: 150px; /* Assure-toi que l'image a une taille appropriée */
+  height: auto;
+}
