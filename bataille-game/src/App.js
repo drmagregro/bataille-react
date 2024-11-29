@@ -1,85 +1,130 @@
 import React, { useState, useEffect } from 'react';
-
-const createDeck = () => {
-  const suits = ['Coeur', 'Carreau', 'Trèfle', 'Pique'];
-  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
-  return suits.flatMap(suit => values.map(value => ({ value, suit })));
+import axios from 'axios';
+import './App.css'; 
+const cardValueTranslation = {
+  '2': 'Deux', '3': 'Trois', '4': 'Quatre', '5': 'Cinq', '6': 'Six', '7': 'Sept',
+  '8': 'Huit', '9': 'Neuf', '10': 'Dix', 'JACK': 'Valet', 'QUEEN': 'Dame', 
+  'KING': 'Roi', 'ACE': 'As'
 };
 
 
-const getCardValue = (card) => {
-  const order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
-  return order.indexOf(card.value);
+const cardSuitTranslation = {
+  'HEARTS': 'Cœur', 'DIAMONDS': 'Carreau', 'CLUBS': 'Trèfle', 'SPADES': 'Pique'
 };
 
-const getSuitSymbol = (suit) => {
-  switch (suit) {
-    case 'Coeur':
-      return '❤️';
-    case 'Carreau':
-      return '♦️';
-    case 'Trèfle':
-      return '♣️';
-    case 'Pique':
-      return '♠️';
-    default:
-      return '';
-  }
+
+const getCardImageUrl = (card) => {
+  const cardCode = `${card.value[0]}${card.suit[0]}`.toUpperCase(); 
+  return `https://deckofcardsapi.com/static/img/${cardCode}.png`;
 };
 
 const App = () => {
+  const [deckId, setDeckId] = useState(null);  
   const [playerDeck, setPlayerDeck] = useState([]);
   const [computerDeck, setComputerDeck] = useState([]);
   const [message, setMessage] = useState('');
+  const [playerCard, setPlayerCard] = useState(null); 
+  const [computerCard, setComputerCard] = useState(null); 
 
   
   useEffect(() => {
-    const deck = createDeck().sort(() => Math.random() - 0.5); // Mélange
-    setPlayerDeck(deck.slice(0, 26));
-    setComputerDeck(deck.slice(26));
+    const createDeck = async () => {
+      try {
+       
+        const response = await axios.get('https://deckofcardsapi.com/api/deck/new/shuffle/');
+        const deckId = response.data.deck_id;  
+        setDeckId(deckId);
+
+        
+        const drawCards = await axios.get(`https://deckofcardsapi.com/api/deck/${deckId}/draw/?count=26`);
+        const playerCards = drawCards.data.cards;
+        const remainingCards = await axios.get(`https://deckofcardsapi.com/api/deck/${deckId}/draw/?count=26`);
+        const computerCards = remainingCards.data.cards;
+
+        setPlayerDeck(playerCards);
+        setComputerDeck(computerCards);
+      } catch (error) {
+        console.error('Erreur lors de la récupération du paquet:', error);
+      }
+    };
+    
+    createDeck();
   }, []);
 
-  
-  const playTurn = () => {
-    if (!playerDeck.length || !computerDeck.length) return setMessage('Partie terminée !');
+ 
+  const playTurn = async () => {
+    if (!deckId || playerDeck.length === 0 || computerDeck.length === 0) {
+      return setMessage('Partie terminée !');
+    }
 
-    const [playerCard, ...nextPlayerDeck] = playerDeck;
-    const [computerCard, ...nextComputerDeck] = computerDeck;
+    const playerCurrentCard = playerDeck[0]; 
+    const computerCurrentCard = computerDeck[0]; 
 
-    const playerCardValue = getCardValue(playerCard);
-    const computerCardValue = getCardValue(computerCard);
+    const playerCardValue = getCardValue(playerCurrentCard);
+    const computerCardValue = getCardValue(computerCurrentCard);
+
+    
+    setPlayerCard(playerCurrentCard);
+    setComputerCard(computerCurrentCard);
 
     
     if (playerCardValue > computerCardValue) {
-      setPlayerDeck([...nextPlayerDeck, playerCard, computerCard]);
-      setComputerDeck(nextComputerDeck);
-      setMessage(`le joueur gagne avec ${playerCard.value} ${getSuitSymbol(playerCard.suit)} contre ${computerCard.value} ${getSuitSymbol(computerCard.suit)}`);
+      setPlayerDeck([...playerDeck.slice(1), playerCurrentCard, computerCurrentCard]);
+      setComputerDeck(computerDeck.slice(1));
+      setMessage(`Joueur gagne avec ${getCardNameInFrench(playerCurrentCard)} contre ${getCardNameInFrench(computerCurrentCard)}`);
     } else if (computerCardValue > playerCardValue) {
-      setComputerDeck([...nextComputerDeck, computerCard, playerCard]);
-      setPlayerDeck(nextPlayerDeck);
-      setMessage(`l'ordinateur gagne avec ${computerCard.value} ${getSuitSymbol(computerCard.suit)} contre ${playerCard.value} ${getSuitSymbol(playerCard.suit)}`);
+      setComputerDeck([...computerDeck.slice(1), computerCurrentCard, playerCurrentCard]);
+      setPlayerDeck(playerDeck.slice(1));
+      setMessage(`Ordinateur gagne avec ${getCardNameInFrench(computerCurrentCard)} contre ${getCardNameInFrench(playerCurrentCard)}`);
     } else {
-      setMessage(`égalité : ${playerCard.value} ${getSuitSymbol(playerCard.suit)} contre ${computerCard.value} ${getSuitSymbol(computerCard.suit)}`);
+      setMessage(`Égalité : ${getCardNameInFrench(playerCurrentCard)} contre ${getCardNameInFrench(computerCurrentCard)}`);
     }
 
-    if (nextPlayerDeck.length === 0) {
-      setMessage(' l ordinateur a gagné la partie !');
-    }
-    if (nextComputerDeck.length === 0) {
-      setMessage('le joueur a gagné la partie !');
+    if (playerDeck.length === 0 || computerDeck.length === 0) {
+      setMessage(playerDeck.length === 0 ? 'Ordinateur a gagné la partie !' : 'Joueur a gagné la partie !');
     }
   };
 
+  
+  const getCardValue = (card) => {
+    const order = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'JACK', 'QUEEN', 'KING', 'ACE'];
+    return order.indexOf(card.value);
+  };
+
+  
+  const getCardNameInFrench = (card) => {
+    return `${cardValueTranslation[card.value]} de ${cardSuitTranslation[card.suit]}`;
+  };
+
   return (
-    <div style={{ textAlign: 'center', padding: '20px' }}>
+    <div className="app-container">
       <h1>Jeu de Bataille</h1>
-      <button onClick={playTurn} disabled={!playerDeck.length || !computerDeck.length}>
+      <button onClick={playTurn} disabled={!deckId || playerDeck.length === 0 || computerDeck.length === 0}>
         Jouer un tour
       </button>
       <p>{message}</p>
       <h3>Cartes restantes :</h3>
       <p>Joueur : {playerDeck.length}</p>
       <p>Ordinateur : {computerDeck.length}</p>
+
+      
+      <div className="card-section">
+        {playerCard && (
+          <div className="card-container">
+            <h2>Carte Joueur</h2>
+            <img src={getCardImageUrl(playerCard)} alt={`${playerCard.value} ${playerCard.suit}`} />
+            <p>{getCardNameInFrench(playerCard)}</p>
+          </div>
+        )}
+        
+        {computerCard && (
+          <div className="card-container">
+            <h2>Carte Ordinateur</h2>
+            <img src={getCardImageUrl(computerCard)} alt={`${computerCard.value} ${computerCard.suit}`} />
+            <p>{getCardNameInFrench(computerCard)}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
